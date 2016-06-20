@@ -1,0 +1,81 @@
+#Compose File Format Version
+version: '2'
+
+#The services we will include ro run our applications
+services:
+  #nginx will be used as the webserver for our fuelphp application
+  nginx:
+    # When docker builds the nginx container, docker will install
+    # the latest version of Linux Alpine with Nginx installed on
+    # it
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+    # docker-compose will mount volumes from our host machine, to the Nginx
+    # so we can edit our application files on our host machine
+    volumes:
+      - ./app/public:/var/www/html/public:ro
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+    # docker-compose will link the Alpine nginx container to the phpfpm
+    # container
+    links:
+      - phpfpm1
+      - phpfpm2
+
+  phpfpm1:
+    # docker-compose will look in the current directory for our docker_builds
+    # directory, and will locate the Dockerfile.php. docker-compose will
+    # build this Dockerfile
+    build:
+      context: .
+      dockerfile: docker_builds/Dockerfile.phpfpm
+    environment:
+      - FUEL_ENV=development
+      - DB_HOST=mysql
+      - DB_NAME=fuelphp
+      - DB_USER=fuel
+      - DB_PASS=secret
+    # docker-compose will mount volumes from our host machine, to the Nginx
+    # so we can edit our application files on our host machine
+    volumes:
+      - ./app:/var/www/html:rw
+      - ./config/php:/usr/local/etc/php/conf.d:ro
+    links:
+      # docker-compose will link the Alpine phpfpm container to the mysql
+      # container
+      - mysql
+
+  phpfpm2:
+    # docker-compose will look in the current directory for our docker_builds
+    # directory, and will locate the Dockerfile.php. docker-compose will
+    # build this Dockerfile
+    build:
+      context: .
+      dockerfile: docker_builds/Dockerfile.phpfpm
+    environment:
+      - DB_HOST=mysql
+      - DB_NAME=fuelphp
+      - DB_USER=fuel
+      - DB_PASS=secret
+   # docker-compose will mount volumes from our host machine, to the Nginx
+   # so we can edit our application files on our host machine
+    volumes:
+      - ./app:/var/www/html:rw
+      - ./config/php:/usr/local/etc/php/conf.d:ro
+    links:
+      # docker-compose will link the Alpine phpfpm container to the mysql
+      # container
+      - mysql
+
+  mysql:
+    image: mysql:5.5.47
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_USER=fuel
+      - MYSQL_PASSWORD=secret
+      - MYSQL_DATABASE=fuelphp
+    ports:
+      # allow mysql access from the host - use /etc/hosts to set mysql to your
+      # docker-machine ip
+      - "3306:3306"
